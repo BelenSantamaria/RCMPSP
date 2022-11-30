@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 from dataclasses import dataclass
+import re
 
 
 @dataclass(frozen=False)
@@ -88,13 +89,13 @@ class MultiProject:
                 np.array(p) + previous_jobs for p in project.successors
             ]
             project.successors = [
-                np.hstack([p, n_jobs - 1]) for p in project.successors
+                np.hstack([p, n_jobs - 1]).astype(int) for p in project.successors
             ]
             previous_jobs += project.n_jobs
 
         successors = np.concatenate([project.successors for project in single_projects])
         successors = (
-            list([np.arange(1, n_jobs)]) + list(successors) + list([np.array([])])
+            list([np.arange(1, n_jobs)]) + list(successors) + list([np.array([]).astype(int)])
         )
 
         predecessors = [[] for _ in successors]
@@ -161,3 +162,79 @@ class MultiProject:
             np.array(resource_availability),
             np.array(transfer_times),
         )
+
+
+@dataclass(frozen=True)
+class Instance:
+    n_jobs: int
+    n_resources: int
+    t_max: int
+    tard_cost: int
+
+    durations: np.ndarray  # job durations
+    successors: List[np.ndarray]  # job successors
+    predecessors: List[np.ndarray]  # job predecessors
+    required_resources: np.ndarray  # job required resources
+    resource_availability: np.ndarray  # resource capacities
+    transfer_times: np.ndarray  # transfer times
+
+    @classmethod
+    def read_instance(cls, path: str):
+
+        path = '../data/j60.sm/j601_1.sm'
+
+        with open(path) as f:
+            lines = f.read()
+
+        separator = re.compile("\*+")
+
+        for info in separator.split(lines):
+            if info.startswith("\nPROJECT INFORMATION:\n"):
+                keys = info.split('\n')[2].split()
+                values = info.split('\n')[3].split()
+
+                d = dict(zip(keys, values))
+
+                n_jobs = int(d['#jobs']) + 2
+                t_max = int(d['duedate'])
+                tard_cost = int(d['tardcost'])
+
+            elif info.startswith("\nPRECEDENCE RELATIONS:\n"):
+                successors = []
+                for line in info.split('\n')[3:-1]:
+                    suc = [int(s)-1 for s in line.split()[3:]]
+                    successors.append(suc)
+
+                predecessors = [[] for _ in successors]
+                for i, succ in enumerate(successors):
+                    for s in succ:
+                        predecessors[s].append(i)
+
+            elif info.startswith("\nREQUESTS/DURATIONS:\n"):
+                durations = []
+                required_resources = []
+                for line in info.split('\n')[4:-1]:
+                    durations.append(int(line.split()[2]))
+                    res = [int(r) for r in line.split()[3:]]
+                    required_resources.append(res)
+
+            elif info.startswith("\nRESOURCEAVAILABILITIES:\n"):
+                resource_availability = [int(r) for r in info.split('\n')[3].split()]
+                n_resources = len(resource_availability)
+
+        # TODO: Add transfer_times
+        transfer_times = np.zeros((n_jobs, n_jobs))
+
+        return Instance(
+            n_jobs,
+            n_resources,
+            t_max,
+            tard_cost,
+            np.array(durations),
+            np.array(successors),
+            np.array(predecessors),
+            np.array(required_resources),
+            np.array(resource_availability),
+            transfer_times
+        )
+
