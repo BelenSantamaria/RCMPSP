@@ -181,8 +181,6 @@ class Instance:
     @classmethod
     def read_instance(cls, path: str):
 
-        path = '../data/j60.sm/j601_1.sm'
-
         with open(path) as f:
             lines = f.read()
 
@@ -231,8 +229,8 @@ class Instance:
             t_max,
             tard_cost,
             np.array(durations),
-            np.array(successors),
-            np.array(predecessors),
+            np.array(successors, dtype=object),
+            np.array(predecessors, dtype=object),
             np.array(required_resources),
             np.array(resource_availability),
             transfer_times

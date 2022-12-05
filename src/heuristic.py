@@ -3,7 +3,7 @@ import numpy as np
 from src.solution import Solution
 
 
-def schedule_jobs(instance):
+def heuristic(instance):
 
     max_time = np.sum(instance.durations)
 
@@ -34,13 +34,12 @@ def schedule_jobs(instance):
 
     # Iterate on increasing t until all jobs are assigned
     while len(scheduled_jobs) < instance.n_jobs:
-        if eligible_jobs:
+        while len(eligible_jobs) > 0:
             # Apply job rule
-            # job with min latest finishing time (min LFT_MP)
 
-            # Selección del job con menor duración de suma de sucesores
-            succesors_durations = [instance.durations[instance.successors[i]].sum() for i in eligible_jobs]
-            selected_job = eligible_jobs[np.argmin(succesors_durations)]
+            # Selección del job con mayor duración de suma de sucesores
+            succesors_durations = [instance.durations[instance.successors[i]].sum() + instance.durations[i] for i in eligible_jobs]
+            selected_job = eligible_jobs[np.argmax(succesors_durations)]
 
             # Selección del job con menor duración
             # selected_job = eligible_jobs[np.argmin(instance.durations[eligible_jobs])]
@@ -57,7 +56,7 @@ def schedule_jobs(instance):
             )
 
             # If supply is sufficient for all resources
-            if (supply_of_resources > instance.required_resources[selected_job]).all():
+            if (supply_of_resources >= instance.required_resources[selected_job]).all():
                 # Repeat until resource demand is satisfied
                 while (
                         resource_stocks[selected_job]
@@ -145,7 +144,7 @@ def schedule_jobs(instance):
             job
             for job in set(range(instance.n_jobs)).difference(scheduled_jobs)
             if set(instance.predecessors[job]).issubset(completed_jobs)
-               and (instance.required_resources[job] < available_resources[t]).all()
+               and (instance.required_resources[job] <= available_resources[t]).all()
         ]
 
     critical_paths_durations = []
